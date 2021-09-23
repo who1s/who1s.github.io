@@ -25,7 +25,7 @@
 <meta itemprop=name content="[0x04] Installing RegRipper on Linux">
 <meta itemprop=description content="RegRipper is a tool made by H. Carvey (keydet89) for Windows registry analysis. The tool is perl script that is made to run on Windows. The tool can be installed on Linux distros but I haven&rsquo;t yet found good instructions how to do it to share so I decided to make my own. I use the tool on the forensic courses I teach. Kudos to keydet89 for making this awesome tool."><meta itemprop=datePublished content="2020-02-19T09:00:00+00:00">
 <meta itemprop=dateModified content="2020-02-19T09:00:00+00:00">
-<meta itemprop=wordCount content="430"><meta itemprop=image content="https://who1s.github.io">
+<meta itemprop=wordCount content="442"><meta itemprop=image content="https://who1s.github.io">
 <meta itemprop=keywords content>
 <meta name=twitter:card content="summary_large_image">
 <meta name=twitter:image content="https://who1s.github.io">
@@ -78,7 +78,8 @@
 <blockquote>
 <p>RegRipper is a tool made by H. Carvey (keydet89) for Windows registry analysis. The tool is perl script that is made to run on Windows. The tool can be installed on Linux distros but I haven&rsquo;t yet found good instructions how to do it to share so I decided to make my own. I use the tool on the forensic courses I teach. Kudos to keydet89 for making this awesome tool.</p>
 </blockquote>
-<p>If you are lazy, <a href=https://github.com/who1s/install_regripper>here&rsquo;s</a> an installation script for Ubuntu/Debian.</p>
+<p><del>If you are lazy, <a href=https://github.com/who1s/install_regripper>here&rsquo;s</a> an installation script for Ubuntu/Debian.</del>
+<strong>Update 2021</strong>: This blog post is obsolete, please refer official documentation: <a href=https://github.com/keydet89/RegRipper3.0>https://github.com/keydet89/RegRipper3.0</a></p>
 <p>First install dependencies we need in running this tool. For some reason at the time I am writing this blogpost, tests fail after building the Win32Registry module. For this reason, we need to use more force in installation. If you don&rsquo;t want to install the module to the default location, you may want to use -l parameter to give an it another location (f.e. /usr/share/regripper/perlmodules/).</p>
 <pre tabindex=0><code>$ sudo apt-get update &amp;&amp; sudo apt-get install -y cpanminus git
 $ sudo cpanm Parse::Win32Registry --force
@@ -141,7 +142,7 @@ Login Count     : 0
 <span class=tag><a href=https://who1s.github.io/categories/tools/>tools</a></span>
 </p>
 <p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file-text"><path d="M14 2H6A2 2 0 004 4v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-430 Words
+442 Words
 </p>
 <p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
 2020-02-19 09:00
